@@ -1,0 +1,43 @@
+name: Build plugin (x64)
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup NuGet
+        uses: nuget/setup-nuget@v2
+        with:
+          nuget-version: "6.x"
+
+      - name: Restore packages
+        run: nuget restore src\TeamCord.sln
+
+      - name: Build TeamCord.Plugin (Release x64)
+        run: >
+          msbuild.exe src\TeamCord.sln
+          /t:TeamCord.Plugin
+          /p:Configuration=Release
+          /p:Platform=x64
+          /p:PostBuildEvent=
+          /m
+
+      - name: Upload TeamCord.dll
+        uses: actions/upload-artifact@v4
+        with:
+          name: TeamCord-plugin-x64-Release
+          path: src\TeamCord.Plugin\bin\x64\Release\TeamCord.dll
+          if-no-files-found: error
+          retention-days: 14

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reflection;
@@ -18,7 +18,7 @@ namespace TeamCord.Plugin
         private TSPlugin()
         {
             PluginName = "TeamCord";
-            ApiVersion = 25;
+            ApiVersion = 26;
             Author = "Kleinrotti";
             Description = "Voice channel bridge between Teamspeak and Discord";
 #if DEBUG
@@ -115,6 +115,7 @@ namespace TeamCord.Plugin
                 Logging.DebugLogging = Settings.DebugLogging;
                 Logging.Log("TeamCord " + typeof(TSPlugin).Assembly.GetName().Version.ToString());
                 Logging.Log("Runtime CLR: " + Environment.Version);
+                LogClientLibVersion();
                 //if credentials are not stored disable login button and don't create ConnectionHandler
 
                 if (Settings.Token == null)
@@ -179,6 +180,30 @@ namespace TeamCord.Plugin
             }
             _settings = null;
             Logging.Log("TeamCord has been shut down.");
+        }
+
+        private void LogClientLibVersion()
+        {
+            try
+            {
+                ulong versionNumber = 0;
+                if (Functions.getClientLibVersionNumber(ref versionNumber) == 0)
+                {
+                    Logging.Log($"TeamSpeak ClientLib version number: {versionNumber}", LogLevel.LogLevel_INFO);
+                }
+
+                IntPtr versionPtr = IntPtr.Zero;
+                if (Functions.getClientLibVersion(ref versionPtr) == 0 && versionPtr != IntPtr.Zero)
+                {
+                    var version = Marshal.PtrToStringAnsi(versionPtr);
+                    Logging.Log($"TeamSpeak ClientLib version string: {version}", LogLevel.LogLevel_INFO);
+                    Functions.freeMemory(versionPtr);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logging.Log($"Could not query TeamSpeak ClientLib version: {ex.Message}", LogLevel.LogLevel_WARNING);
+            }
         }
 
         #region Events
@@ -529,7 +554,7 @@ namespace TeamCord.Plugin
             //we dont know the array size so we looping up to 100 users in a ts3 channel and break later
             for (int i = 0; i < 100; i++)
             {
-                var id = (ushort)Marshal.ReadInt16(ptr, i);
+                var id = (ushort)Marshal.ReadInt16(ptr, i * sizeof(ushort));
                 //at value 0 array end is reached
                 if (id == 0)
                     break;
@@ -541,7 +566,7 @@ namespace TeamCord.Plugin
                     clients.Add(id, discordid);
             }
 
-            Marshal.FreeHGlobal(ptr);
+            Functions.freeMemory(ptr);
             if (err)
                 Logging.Log("Reading clients descriptions failed", LogLevel.LogLevel_WARNING);
             return clients;
