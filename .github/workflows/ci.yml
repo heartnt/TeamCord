@@ -25,10 +25,10 @@ jobs:
       - name: Restore packages
         run: nuget restore src\TeamCord.sln
 
+      # 直接编译 .csproj：/t:TeamCord.Plugin 在部分 MSBuild 下会因项目名含 "." 解析失败
       - name: Build TeamCord.Plugin (Release x64)
         run: >
-          msbuild.exe src\TeamCord.sln
-          /t:TeamCord.Plugin
+          msbuild.exe src\TeamCord.Plugin\TeamCord.Plugin.csproj
           /p:Configuration=Release
           /p:Platform=x64
           /p:PostBuildEvent=
